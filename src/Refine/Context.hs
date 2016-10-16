@@ -3,7 +3,7 @@ module Refine.Context where
 
 import Compute.TermDeBruijn
 
-{- the refinement context/refinement for when working with judgments -}
+{- the refinement context/environment for when working with judgments -}
 
 class (Eq a,Show a) => Telescope a where
   empty :: a
