@@ -1,11 +1,11 @@
-module TermDeBruijn where
+module Compute.TermDeBruijn where
 
 -- data Var = V Int deriving Show
 
 data Tm = VAR Int | NAT | UNIT | SIG Tm Tm | PI Tm Tm | UNI Int | EQUAL Tm Tm Tm
         | Z | S Tm | TT | PROD Tm Tm | LAM Tm | REFL
         | SPREAD Tm Tm | APP Tm Tm | NATREC Tm Tm Tm
-        deriving Show
+        deriving (Eq,Show)
 
 -- lift e c k = lift vars in e by k from c
 lift :: Tm -> Int -> Int -> Tm
@@ -71,6 +71,9 @@ wellformed n (LAM e)      = wellformed (n + 1) e
 wellformed n (SPREAD e p) = wellformed (n + 2) e && wellformed n p
 wellformed n (APP e1 e2)  = wellformed n e1 && wellformed n e2
 wellformed n (NATREC ez es e) = wellformed n ez && wellformed (n + 2) es && wellformed n e
+
+closed :: Tm -> Bool
+closed = wellformed 0
 
 -- s = \x \y \z . x z (y z)
 -- s = \\\. 2 0 (1 0)
