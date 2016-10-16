@@ -11,6 +11,7 @@ class (Eq a,Show a) => Telescope a where
   get :: Int -> a -> Maybe Tm
   extend :: Int -> Tm -> a -> a
   -- linearize :: a -> [(Int, String)]
+  liftCtxt :: Int -> Int -> a -> a
 
 -- typing context
 type LCtxt = [Tm]
@@ -22,6 +23,7 @@ instance Telescope LCtxt where
     | n < len = Just $ tel !! (len - n - 1)
     | otherwise            = Nothing
       where len = length tel
+  liftCtxt c k = map (\x -> lift x c k)
   extend _ e ctxt = e : ctxt
 
 -- environment
@@ -32,4 +34,5 @@ instance Telescope LEnv where
   isEmpty = null
   get n = foldl (\acc (x,e) -> if n == x then Just e else acc) Nothing
   -- insert in front (i.e. backwards from the normal paper convention)
+  liftCtxt c k = map (\(x,e) -> (x, lift e c k))
   extend x e ctxt = (x,e) : ctxt

@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GADTs #-}
 module Refine.Tactics where
 
@@ -11,6 +10,7 @@ import Refine.Context
 data Derivation where
   -- general derivations
   Hyp :: Int -> Derivation
+  HypEq :: Int -> Derivation
   -- don't know why they call typehood (formation) introduction rules
 
   -- H >> U_i
@@ -20,6 +20,7 @@ data Derivation where
 
   -- H >> NAT
   IntroNat :: Derivation
+  EqNat    :: Derivation
   -- H >> Z = Z (in Nat)
   EqZ     :: Derivation
   -- H >> S n = S n' (in Nat)
@@ -44,6 +45,10 @@ data Derivation where
   --   >> A = A'
   --   >> [a/x]B = [a/x]B'
   EqPi :: Derivation -> Derivation -> Derivation
+  -- >> lam x . e = lam x . e' in Pi x : A , B
+  --   a : A >> [a/x]e = [a/x]e' in [a/x]B
+  --   >> A in U_i
+  EqLam :: Derivation -> Derivation -> Derivation
 
   IntroUnit :: Derivation
   EqTT    :: Derivation
@@ -58,12 +63,13 @@ data Derivation where
 data Judgment where
   Judgment :: (Telescope c) => c -> Tm -> Judgment
 
--- tactic combinators and refinement rules
+data TacticRet = TR { subgoals :: [Judgment] , extract :: [Derivation] -> Derivation }
 
+-- tactic combinators and refinement rules
 class Tactical t where
   idTAC :: t
-  thenTAC :: t -> t -> Judgment -> TacticRet
-  thenTACL :: t -> [t] -> Judgment -> TacticRet
+  thenTAC :: t -> t -> t
+  thenTACL :: t -> [t] -> t
   -- orelseTAC :: t -> t -> Judgment -> TacticRet
 
 -- data SimpleTac = Id | Intro (Judgment -> TacticRet) | Elim Tm | Eq | Fail
@@ -79,26 +85,26 @@ split (x:xs) ys =
 
 instance Tactical Tactic where
   idTAC = T (\j -> TR { subgoals = [j] , extract = \[d] -> d })
-  thenTAC t1 t2 j =
-    let TR { subgoals = gls , extract = ext } = runTAC t1 j
-        rets = map (runTAC t2) gls
-        gls' = map subgoals rets
-        exts = map extract rets
-    in
-      TR { subgoals = concat gls'
-         , extract = \l -> ext $ zipWith (\f x -> f x) exts (split gls' l) }
-  thenTACL t1 tl j =
-    let TR { subgoals = gls , extract = ext } = runTAC t1 j
-        rets = (map runTAC tl) <*> gls
-        gls' = map subgoals rets
-        exts = map extract rets
-    in
-      TR { subgoals = concat gls'
-         , extract = \l -> ext $ zipWith (\f x -> f x) exts (split gls' l) }
+  thenTAC t1 t2 = T $
+    \j ->
+      let TR { subgoals = gls , extract = ext } = runTAC t1 j
+          rets = map (runTAC t2) gls
+          gls' = map subgoals rets
+          exts = map extract rets
+      in
+        TR { subgoals = concat gls'
+         , extract = \l -> ext $ zipWith ($) exts (split gls' l) }
+  thenTACL t1 tl = T $
+    \j ->
+      let TR { subgoals = gls , extract = ext } = runTAC t1 j
+          -- rets = ((map runTAC tl) :: [Judgment -> TacticRet]) <*> (gls :: [Judgment])
+          rets = zipWith ($) (map runTAC tl) gls
+          gls' = map subgoals rets
+          exts = map extract rets
+      in
+        TR { subgoals = concat gls'
+           , extract = \l -> ext $ zipWith ($) exts (split gls' l) }
 
-
-
-data TacticRet = TR { subgoals :: [Judgment] , extract :: [Derivation] -> Derivation }
 
 instance Show Judgment where
   show (Judgment c e) = show c ++ " >> " ++ show e

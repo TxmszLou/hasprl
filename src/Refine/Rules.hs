@@ -19,6 +19,22 @@ hyp x = T $
                           ++ ", incompatible with goal type " ++ show a
           Nothing -> error "Hyp not found!!"
 
+hypEq :: Int -> Tactic
+hypEq x = T $
+  \j ->
+    case j of
+      Judgment c (EQUAL e1 e2 a)
+        | VAR x /= e1   -> error $ "LHS is " ++ show e1 ++ " rather than " ++ show (VAR x)
+        | VAR x /= e2   -> error $ "RHS is " ++ show e2 ++ " rather than " ++ show (VAR x)
+        | otherwise     ->
+          case get x c of
+            Just a'   ->
+              if a /= a'
+              then error $ "type " ++ show a ++ " expected, given " ++ show a'
+              else TR { subgoals = [] , extract = const (HypEq x) }
+            Nothing -> error "Hyp not found!!"
+      _             -> error "hypEq does not apply!!"
+
 -- typehood
 -- UNIT typehood
 introUNIT :: Tactic
@@ -35,6 +51,13 @@ introNAT = T $
     case j of
       (Judgment c NAT) -> TR { subgoals = [] , extract = const IntroNat }
       _                -> error "intro NAT does not apply!!"
+
+natEq :: Tactic
+natEq = T $
+  \j ->
+    case j of
+      (Judgment c (EQUAL NAT NAT (UNI _))) -> TR { subgoals = [] , extract = const EqNat }
+      _ -> error "NAT type equality does not apply!!"
 
 -- SIG typehood at universe level i
 introSig :: Int -> Tactic
@@ -55,6 +78,16 @@ introPi i = T $
         TR { subgoals = [ Judgment c (EQUAL a a (UNI i)) , Judgment (extend 0 a c) b ]
            , extract = \(ea:eb:_) -> IntroPi ea eb }
       _                     -> error "intro PI does not apply!!"
+
+-- membership equality in PI
+lamEqInPi :: Int -> Tactic
+lamEqInPi i = T $
+  \j ->
+    case j of
+      (Judgment c (EQUAL (LAM e) (LAM e') (PI a b))) ->
+        TR { subgoals = [ Judgment (extend 0 a c) (EQUAL (lift e 0 1) (lift e' 0 1) b) , Judgment c (EQUAL a a (UNI i))]
+           , extract = \(ee:ea:_) -> EqLam ee ea }
+      _                    -> error "lambda equality does not apply!!"
 
 -- membership equality in Nat
 zEqInNat :: Tactic
@@ -82,11 +115,17 @@ ttEqInUnit = T $
 
 
 -- test tactics
-hypx :: Judgment
-hypx = Judgment [UNI 0] (UNI 0)
+idx :: Judgment
+idx = Judgment ([UNI 0] :: LCtxt) (EQUAL (LAM (VAR 0)) (LAM (VAR 0)) (PI (VAR 0) (VAR 0)))
 
--- runTAC (hyp 0) hypx
--- => subgoals : []
+proveIdx :: Tactic
+proveIdx = thenTACL (lamEqInPi 0) [hypEq 1 , hypEq 0]
 
 hypy :: Judgment
 hypy = Judgment [UNI 0 , NAT] NAT
+
+refOne :: Judgment
+refOne = Judgment ([] :: LCtxt) (EQUAL (S Z) (S Z) NAT)
+
+prog :: Tactic
+prog = thenTAC sEqInNat zEqInNat
