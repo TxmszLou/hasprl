@@ -11,13 +11,13 @@ data Derivation where
   -- general derivations
   Hyp :: Int -> Derivation
   HypEq :: Int -> Derivation
-  -- don't know why they call typehood (formation) introduction rules
 
-  -- H >> U_i
-  IntroUni :: Derivation
-  -- >> U_i = U_j
-  EqUni :: Derivation
+  -- UNIT
+  IntroUnit :: Derivation
+  EqUnit    :: Derivation
+  EqTT      :: Derivation
 
+  -- NAT
   -- H >> NAT
   IntroNat :: Derivation
   EqNat    :: Derivation
@@ -27,16 +27,13 @@ data Derivation where
   --   >> n = n' (in Nat)
   EqS     :: Derivation -> Derivation -- [n = m] \to [S n = S m]
 
+  -- UNI
+  -- H >> U_i
+  IntroUni :: Derivation
+  -- >> U_i = U_j
+  EqUni :: Derivation
 
-  -- H >> Sig x : A . B
-  --   H >> A
-  --   H, a : A >> [a/x]B
-  IntroSig :: Derivation -> Derivation -> Derivation
-  -- >> \Sig x : A . B = \Sig x : A' . B'
-  --    >> A = A'
-  --    >> [a/x]B = [a/x]B'
-  EqSig :: Derivation -> Derivation -> Derivation
-
+  -- PI
   -- H >> Pi x : A . B
   --   H >> A
   --   H, a : A >> [a/x]B
@@ -50,8 +47,21 @@ data Derivation where
   --   >> A in U_i
   EqLam :: Derivation -> Derivation -> Derivation
 
-  IntroUnit :: Derivation
-  EqTT    :: Derivation
+  -- SIG
+  -- H >> Sig x : A . B
+  --   H >> A
+  --   H, a : A >> [a/x]B
+  IntroSig :: Derivation -> Derivation -> Derivation
+  -- >> \Sig x : A . B = \Sig x : A' . B'
+  --    >> A = A'
+  --    >> [a/x]B = [a/x]B'
+  EqSig :: Derivation -> Derivation -> Derivation
+  -- >> (a,b) = (a',b') : Sig x : A . B
+  --   >> a = a : A
+  --   >> b = b : [a/x]B
+  EqPr  :: Derivation -> Derivation -> Derivation
+
+
   -- EqPr    :: Derivation -> Derivation -> Derivation
 
 

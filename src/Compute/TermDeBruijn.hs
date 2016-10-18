@@ -3,7 +3,7 @@ module Compute.TermDeBruijn where
 -- data Var = V Int deriving Show
 
 data Tm = VAR Int | NAT | UNIT | SIG Tm Tm | PI Tm Tm | UNI Int | EQUAL Tm Tm Tm
-        | Z | S Tm | TT | PROD Tm Tm | LAM Tm | REFL
+        | Z | S Tm | TT | PAIR Tm Tm | LAM Tm | REFL
         | SPREAD Tm Tm | APP Tm Tm | NATREC Tm Tm Tm
         deriving (Eq,Show)
 
@@ -21,7 +21,7 @@ lift (EQUAL e1 e2 a) c k = EQUAL (lift e1 c k) (lift e2 c k) (lift a c k)
 lift Z _ _            = Z
 lift (S e) c k        = S (lift e c k)
 lift TT _ _           = TT
-lift (PROD e1 e2) c k = PROD (lift e1 c k) (lift e2 c k)
+lift (PAIR e1 e2) c k = PAIR (lift e1 c k) (lift e2 c k)
 lift (LAM e) c k      = LAM (lift e (c + 1) k)
 -- SPREAD introduces two new bindings for `e` to play with
 lift (SPREAD e p) c k   = SPREAD (lift e (c + 2) k) (lift p c k)
@@ -47,7 +47,7 @@ subst m x (EQUAL e1 e2 a) = EQUAL (subst m x e1) (subst m x e2) (subst m x a)
 subst _ _ Z       = Z
 subst m x (S e)       = S (subst m x e)
 subst _ _ TT      = TT
-subst m x (PROD e1 e2) = PROD (subst m x e1) (subst m x e2)
+subst m x (PAIR e1 e2) = PAIR (subst m x e1) (subst m x e2)
 subst m x (LAM e) = LAM (recbind 1 m x e)
 subst m x (SPREAD e p) = SPREAD (recbind 2 m x e) (subst m x p)
 subst m x (APP e1 e2)  = APP (subst m x e1) (subst m x e2)
@@ -66,7 +66,7 @@ wellformed n (EQUAL e1 e2 a) = wellformed n e1 && wellformed n e2 && wellformed 
 wellformed n Z         = True
 wellformed n (S e)     = wellformed n e
 wellformed n TT        = True
-wellformed n (PROD e1 e2) = wellformed n e1 && wellformed n e2
+wellformed n (PAIR e1 e2) = wellformed n e1 && wellformed n e2
 wellformed n (LAM e)      = wellformed (n + 1) e
 wellformed n (SPREAD e p) = wellformed (n + 2) e && wellformed n p
 wellformed n (APP e1 e2)  = wellformed n e1 && wellformed n e2
@@ -94,7 +94,7 @@ beta e
     case e of
       APP (LAM e1) e2 -> subst e2 0 e1
       APP e1 e2 -> APP (beta e1) e2
-      SPREAD e (PROD e1 e2) -> subst e2 1 (subst e1 0 e)
+      SPREAD e (PAIR e1 e2) -> subst e2 1 (subst e1 0 e)
       SPREAD e1 e2 -> SPREAD e1 (beta e2)
       NATREC ez es Z        -> ez
       NATREC ez es (S e)        -> subst e 1 (subst (NATREC ez es e) 0 es)
